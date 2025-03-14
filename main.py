@@ -207,11 +207,12 @@ Reviews:
         prompt += "[/INST]"
 
         # Токенизация и генерация
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(model.device)
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048, padding=True).to(model.device)
 
         outputs = model.generate(
             inputs["input_ids"],
             max_new_tokens=400,
+            attention_mask=inputs["attention_mask"],
             temperature=0.5,
             top_p=0.85,
             repetition_penalty=1.2,
