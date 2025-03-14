@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+transformers>=4.36.0
+torch>=2.0.0
+accelerate>=0.20.0
+bitsandbytes>=0.40.0
+sentencepiece
+huggingface-hub
+python-dotenv
