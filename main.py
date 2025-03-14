@@ -103,37 +103,28 @@ def initialize_model():
     try:
         logger.info(f"Attempting to initialize model: {MODEL_NAME}")
 
-        # Авторизация в Hugging Face
+        # Авторизация в Hugging Face (если есть токен)
         if HF_TOKEN:
             logger.info("Logging in to Hugging Face")
             login(token=HF_TOKEN)
         else:
             logger.warning("No Hugging Face token provided")
 
-        # Загрузка токенизатора
+        # Загружаем токенизатор
         logger.info("Loading tokenizer")
         tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-        # Конфигурация квантизации
-        logger.info("Configuring quantization")
-        quantization_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_dtype=torch.float16,
-            bnb_4bit_use_double_quant=True,
-            bnb_4bit_quant_type="nf4"
-        )
-
-        # Загрузка модели
-        logger.info("Loading model")
+        # 🚨 Убираем квантизацию bitsandbytes!
+        logger.info("Loading model without quantization (CPU Mode)")
         model = AutoModelForCausalLM.from_pretrained(
             MODEL_NAME,
-            device_map="auto",
-            quantization_config=quantization_config,
-            low_cpu_mem_usage=True
+            torch_dtype=torch.float32,  # Используем float32 для CPU
+            device_map={"": "cpu"}  # Принудительно ставим CPU
         )
 
         logger.info("Mistral model initialized successfully")
         return True
+
     except Exception as e:
         logger.error(f"Model initialization error: {e}")
         logger.error(f"Detailed traceback: {traceback.format_exc()}")
