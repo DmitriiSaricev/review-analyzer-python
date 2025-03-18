@@ -103,28 +103,37 @@ def initialize_model():
     try:
         logger.info(f"Attempting to initialize model: {MODEL_NAME}")
 
-        # Авторизация в Hugging Face (если есть токен)
+        # Авторизация в Hugging Face
         if HF_TOKEN:
             logger.info("Logging in to Hugging Face")
             login(token=HF_TOKEN)
         else:
             logger.warning("No Hugging Face token provided")
 
-        # Загружаем токенизатор
+        # Загрузка токенизатора
         logger.info("Loading tokenizer")
         tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-        # 🚨 Убираем квантизацию bitsandbytes!
-        logger.info("Loading model without quantization (CPU Mode)")
+        # Конфигурация квантизации
+        logger.info("Configuring quantization")
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4"
+        )
+
+        # Загрузка модели
+        logger.info("Loading model")
         model = AutoModelForCausalLM.from_pretrained(
             MODEL_NAME,
-            torch_dtype=torch.float32,  # Используем float32 для CPU
-            device_map={"": "cpu"}  # Принудительно ставим CPU
+            device_map="auto",
+            quantization_config=quantization_config,
+            low_cpu_mem_usage=True
         )
 
         logger.info("Mistral model initialized successfully")
         return True
-
     except Exception as e:
         logger.error(f"Model initialization error: {e}")
         logger.error(f"Detailed traceback: {traceback.format_exc()}")
@@ -207,12 +216,11 @@ Reviews:
         prompt += "[/INST]"
 
         # Токенизация и генерация
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048, padding=True).to(model.device)
+        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048).to(model.device)
 
         outputs = model.generate(
             inputs["input_ids"],
             max_new_tokens=400,
-            attention_mask=inputs["attention_mask"],
             temperature=0.5,
             top_p=0.85,
             repetition_penalty=1.2,
