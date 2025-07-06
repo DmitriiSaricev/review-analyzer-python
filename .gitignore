@@ -1,28 +1,22 @@
-# Игнорируем виртуальное окружение
 venv/
 .env
 
-# Игнорируем логи и временные файлы
 *.log
 logs/
 app.log
 app_debug.log
 
-# Игнорируем кешированные файлы Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Игнорируем файлы конфигурации IDE
 .vscode/
 .idea/
 *.iml
 
-# Игнорируем временные файлы OS
 .DS_Store
 Thumbs.db
 
-# Docker файлы, если нужно
 .dockerignore
 docker-compose.override.yml

@@ -15,13 +15,13 @@ from fastapi import Body
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from huggingface_hub import login
 from dotenv import load_dotenv
-import gc  # Для очистки памяти
+import gc  # For memory cleanup
 
-# Создание директории для логов
+# Create a directory for logs
 LOG_DIR = 'logs'
 os.makedirs(LOG_DIR, exist_ok=True)
 
-# Настройка логирования
+# Logger configuration
 def setup_logger():
     logging.basicConfig(
         level=logging.DEBUG,
@@ -29,7 +29,7 @@ def setup_logger():
         handlers=[
             logging.handlers.RotatingFileHandler(
                 os.path.join(LOG_DIR, 'app_debug.log'),
-                maxBytes=10*1024*1024,  # 10 МБ
+                maxBytes=10*1024*1024,  # 10 MB
                 backupCount=5,
                 encoding='utf-8'
             ),
@@ -44,10 +44,10 @@ def setup_logger():
 setup_logger()
 logger = logging.getLogger(__name__)
 
-# Загрузка переменных окружения
+# Load environment variables
 load_dotenv()
 
-# Определение Pydantic моделей
+# Pydantic models definition
 class ReviewItem(BaseModel):
     text: str = Field(..., min_length=2)
     rating: float = Field(..., gt=0, le=5)
@@ -69,14 +69,14 @@ class BusinessReviewRequest(BaseModel):
             raise ValueError('At least one review is required')
         return v
 
-# Инициализация FastAPI
+# FastAPI app initialization
 app = FastAPI(
     title="Business Reviews AI Analyzer",
     description="Advanced AI-powered review analysis service",
     version="1.0.0"
 )
 
-# Middleware для CORS
+# Enable CORS middleware
 from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
@@ -87,11 +87,11 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# Конфигурация модели
+# Model configuration
 MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"
 HF_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 
-# Глобальные переменные
+# Global variables for model and tokenizer
 model = None
 tokenizer = None
 
@@ -106,15 +106,15 @@ def initialize_model():
         else:
             logger.warning("⚠️ No Hugging Face token provided")
 
-        # Очистка памяти перед загрузкой модели
+        # Free up memory before loading the model
         logger.info("🧹 Clearing unused memory...")
         gc.collect()
-        torch.cuda.empty_cache()  # Если используешь GPU
+        torch.cuda.empty_cache()  # Only relevant for GPU usage
 
         logger.info("📖 Loading tokenizer")
         tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-        # ✅ Фиксируем проблему с отсутствием `pad_token`
+        # Fix missing pad_token if needed
         if tokenizer.pad_token is None:
             logger.warning("⚠️ Tokenizer has no `pad_token`, setting `eos_token` as padding.")
             tokenizer.pad_token = tokenizer.eos_token
@@ -144,9 +144,9 @@ def initialize_model():
 
 initialize_model()
 
-# Функция для генерации саммари
+# Generate review summary using Mistral model
 def generate_mistral_summary(reviews: list, business_name: str) -> str:
-    """Генерация саммари отзывов"""
+    """Generate a summary from review list"""
     try:
         if not model or not tokenizer:
             logger.error("🚨 Model is not initialized")
@@ -185,7 +185,7 @@ def generate_mistral_summary(reviews: list, business_name: str) -> str:
         logger.error(f"🛑 Error generating summary: {e}")
         return "Unable to process reviews and generate summary at this time."
 
-# Обработчик запроса
+# Main endpoint for analysis
 @app.post("/analyze-business-reviews-json")
 async def analyze_business_reviews_json(payload: Dict[str, Any] = Body(...)):
     try:
@@ -205,7 +205,7 @@ async def analyze_business_reviews_json(payload: Dict[str, Any] = Body(...)):
         result = {
             "nameOfPlace": business_name,
             "summary": summary,
-            "averageScore": 4.0,  # Заглушка, рассчитай при необходимости
+            "averageScore": 4.0,  # Placeholder — calculate if needed
             "keyThemes": ["Service Quality", "Customer Experience"]
         }
 
@@ -216,7 +216,7 @@ async def analyze_business_reviews_json(payload: Dict[str, Any] = Body(...)):
         logger.error(f"⚠️ Critical error: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-# Проверка работоспособности
+# Healthcheck endpoint
 @app.get("/health")
 async def health_check():
     status = "healthy" if model else "unhealthy"
